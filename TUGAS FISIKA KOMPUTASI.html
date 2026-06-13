@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Simulasi Gerak Jatuh Bebas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:      #1c2333;
+  --surf:    #243044;
+  --surf2:   #2d3c55;
+  --border:  rgba(120,160,210,0.18);
+  --accent:  #5ba4f5;
+  --amber:   #f5a623;
+  --mint:    #52d48f;
+  --danger:  #f07070;
+  --text:    #d8e6f3;
+  --text2:   #8aa8c8;
+  --text3:   #4e6e90;
+  --mono:    'Space Mono', monospace;
+  --sans:    'Space Grotesk', sans-serif;
+  --r:       10px;
+}
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html { font-size:16px; }
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* ─── PAGE VISIBILITY ─── */
+.page { display:none; }
+.page.active { display:flex; }
+
+/* ════════════════════════
+   INTRO
+════════════════════════ */
+#pg-intro {
+  min-height:100vh;
+  align-items:center;
+  justify-content:center;
+  padding:1.5rem;
+  background:
+    radial-gradient(ellipse 80% 60% at 15% 40%, rgba(91,164,245,.08) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 50% at 85% 70%, rgba(82,212,143,.06) 0%, transparent 60%),
+    var(--bg);
+}
+.card {
+  background: var(--surf);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 2.4rem 2rem;
+  max-width: 420px;
+  width: 100%;
+  box-shadow: 0 6px 32px rgba(0,0,0,.4);
+  position: relative;
+  overflow: hidden;
+}
+.card::after {
+  content:''; position:absolute; top:0; left:0; right:0; height:3px;
+  background: linear-gradient(90deg, var(--accent), var(--mint));
+  border-radius: 18px 18px 0 0;
+}
+.intro-icon { font-size:3rem; text-align:center; display:block; margin-bottom:1.2rem;
+  animation: bob 2.5s ease-in-out infinite; }
+@keyframes bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-9px)} }
+.badge {
+  display:inline-block;
+  background: rgba(91,164,245,.12); border:1px solid rgba(91,164,245,.28);
+  color:var(--accent); font-family:var(--mono); font-size:.58rem;
+  letter-spacing:3px; padding:3px 10px; border-radius:4px;
+  text-transform:uppercase; margin-bottom:1rem;
+}
+.intro-title {
+  font-size:1.55rem; font-weight:700; line-height:1.25; margin-bottom:.4rem;
+  background: linear-gradient(135deg, var(--text) 0%, var(--accent) 100%);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+}
+.intro-sub {
+  font-size:.85rem; color:var(--text2); line-height:1.65; margin-bottom:2rem;
+}
+.lbl {
+  display:block; font-size:.7rem; font-weight:600;
+  letter-spacing:1.5px; text-transform:uppercase;
+  color:var(--accent); margin-bottom:.4rem;
+}
+.inp {
+  width:100%; background:rgba(255,255,255,.04); border:1.5px solid var(--border);
+  border-radius:8px; padding:.78rem 1rem; color:var(--text);
+  font-family:var(--sans); font-size:.97rem; outline:none;
+  transition:border-color .25s, box-shadow .25s;
+  -webkit-appearance:none; margin-bottom:1.1rem;
+}
+.inp:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(91,164,245,.15); }
+.inp::placeholder { color:var(--text3); }
+.btn-primary {
+  width:100%; margin-top:.5rem; padding:.9rem 1.5rem;
+  background:linear-gradient(135deg, var(--accent) 0%, #3a86e8 100%);
+  border:none; border-radius:8px; color:#fff;
+  font-family:var(--sans); font-size:1rem; font-weight:700;
+  letter-spacing:.5px; cursor:pointer;
+  box-shadow:0 4px 16px rgba(91,164,245,.3);
+  transition:transform .15s, box-shadow .25s;
+  -webkit-tap-highlight-color:transparent;
+}
+.btn-primary:active { transform:scale(.97); }
+
+/* ════════════════════════
+   SIM PAGE SHELL
+════════════════════════ */
+#pg-sim { flex-direction:column; min-height:100vh; }
+
+/* ── Header ── */
+.hdr {
+  background:var(--surf); border-bottom:1px solid var(--border);
+  padding:.65rem 1rem;
+  display:flex; align-items:center; gap:.8rem;
+  position:sticky; top:0; z-index:200;
+}
+.logo { font-family:var(--mono); font-size:.82rem; font-weight:700;
+  color:var(--accent); letter-spacing:1.5px; white-space:nowrap; flex-shrink:0; }
+.user-meta { display:flex; flex-direction:column; align-items:flex-end;
+  font-size:.7rem; color:var(--text3); line-height:1.4; margin-left:auto; }
+.user-meta strong { color:var(--text2); font-weight:600; }
+.btn-back {
+  background:rgba(255,255,255,.06); border:1px solid var(--border);
+  color:var(--text2); border-radius:6px; padding:.3rem .65rem;
+  font-size:.76rem; cursor:pointer; white-space:nowrap;
+  font-family:var(--sans); -webkit-tap-highlight-color:transparent;
+  transition:background .2s; flex-shrink:0;
+}
+.btn-back:active { background:rgba(255,255,255,.12); }
+
+/* ── Body grid (desktop 3-col) ── */
+.sim-body {
+  display:grid;
+  grid-template-columns: 300px 1fr 270px;
+  grid-template-rows: 1fr;
+  /* height fills remaining viewport */
+  height: calc(100vh - 50px);
+  overflow: hidden;
+}
+
+/* ── Panels ── */
+.panel {
+  background:var(--surf);
+  overflow-y:auto; overflow-x:hidden;
+  padding:.9rem;
+  display:flex; flex-direction:column; gap:.85rem;
+  -webkit-overflow-scrolling: touch;
+  min-width: 0;
+}
+.panel-l { border-right:1px solid var(--border); }
+.panel-r { border-left:1px solid var(--border); }
+
+/* ── Center canvas column ── */
+.sim-mid {
+  display:flex; flex-direction:column;
+  background:var(--bg); overflow:hidden; position:relative;
+}
+#simCanvas { display:block; flex:1; width:100%; height:100%; }
+
+/* ── Section titles ── */
+.stitle {
+  font-family:var(--mono); font-size:.58rem; letter-spacing:3px;
+  text-transform:uppercase; color:var(--accent);
+  border-bottom:1px solid var(--border); padding-bottom:.45rem;
+}
+
+/* ── Control card ── */
+.cc {
+  background:var(--surf2); border:1px solid var(--border);
+  border-radius:var(--r); padding:.8rem .9rem;
+}
+.cr { display:flex; justify-content:space-between; align-items:center; margin-bottom:.25rem; }
+.cl { font-size:.8rem; color:var(--text2); }
+.cv { font-family:var(--mono); font-size:.78rem; color:var(--amber); min-width:60px; text-align:right; }
+
+input[type=range] {
+  -webkit-appearance:none; width:100%; height:5px;
+  background:rgba(91,164,245,.15); border-radius:3px;
+  outline:none; cursor:pointer; display:block;
+  margin:.3rem 0 .65rem;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance:none; width:22px; height:22px;
+  border-radius:50%; background:var(--accent); cursor:pointer;
+  box-shadow:0 0 6px rgba(91,164,245,.5);
+}
+input[type=range]::-moz-range-thumb {
+  width:20px; height:20px; border-radius:50%;
+  background:var(--accent); cursor:pointer; border:none;
+}
+
+/* ── Toggle ── */
+.tr { display:flex; align-items:center; justify-content:space-between; padding:.28rem 0; }
+.tl { font-size:.8rem; color:var(--text2); }
+.tog { position:relative; width:40px; height:23px; flex-shrink:0; }
+.tog input { display:none; }
+.tog-tk {
+  position:absolute; inset:0;
+  background:rgba(255,255,255,.1); border-radius:23px;
+  cursor:pointer; transition:background .25s;
+}
+.tog-tk::before {
+  content:''; position:absolute; width:17px; height:17px;
+  border-radius:50%; background:#fff; top:3px; left:3px;
+  transition:transform .25s;
+}
+.tog input:checked + .tog-tk { background:var(--accent); }
+.tog input:checked + .tog-tk::before { transform:translateX(17px); }
+
+/* ── Object buttons ── */
+.obj-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:.4rem; margin-top:.3rem; }
+.obj-btn {
+  background:rgba(255,255,255,.04); border:1.5px solid var(--border);
+  border-radius:8px; padding:.42rem .1rem;
+  cursor:pointer; text-align:center; font-size:1.2rem;
+  display:flex; flex-direction:column; align-items:center; gap:2px;
+  transition:border-color .2s, background .2s;
+  -webkit-tap-highlight-color:transparent;
+}
+.obj-btn span { font-size:.55rem; color:var(--text3); font-family:var(--sans); }
+.obj-btn .oe {
+  font-family: "Apple Color Emoji","Noto Color Emoji","Segoe UI Emoji","Segoe UI Symbol",serif;
+  font-size:1.35rem; line-height:1; display:block;
+}
+.obj-btn.active { border-color:var(--accent); background:rgba(91,164,245,.1); }
+
+/* ── Playbar ── */
+.playbar {
+  display:flex; align-items:center; gap:.5rem; flex-wrap:wrap;
+  background:var(--surf2); border:1px solid var(--border);
+  border-radius:var(--r); padding:.5rem .65rem;
+}
+.btn-play {
+  background:linear-gradient(135deg, var(--accent), #3a86e8);
+  border:none; border-radius:7px; color:#fff;
+  font-family:var(--sans); font-size:.82rem; font-weight:700;
+  padding:.5rem .9rem; cursor:pointer; white-space:nowrap;
+  transition:transform .15s; -webkit-tap-highlight-color:transparent;
+}
+.btn-play:active { transform:scale(.95); }
+.btn-reset {
+  background:rgba(255,255,255,.05); border:1px solid var(--border);
+  border-radius:7px; color:var(--text2);
+  font-family:var(--sans); font-size:.82rem;
+  padding:.5rem .75rem; cursor:pointer;
+  -webkit-tap-highlight-color:transparent; transition:background .2s;
+}
+.btn-reset:active { background:rgba(255,255,255,.1); }
+.timer { font-family:var(--mono); font-size:.82rem; color:var(--amber); margin-left:auto; }
+
+/* ── Note ── */
+.note {
+  background:rgba(91,164,245,.06); border:1px solid rgba(91,164,245,.15);
+  border-radius:var(--r); padding:.7rem .9rem;
+  font-size:.78rem; color:var(--text2); line-height:1.7;
+  /* auto height — grows to fit content, never clips */
+  min-height:56px;
+  height:auto;
+  overflow:visible;
+  word-break: break-word;
+}
+
+/* ── Data grid ── */
+.dg { display:grid; grid-template-columns:1fr 1fr; gap:.45rem; }
+.dc {
+  background:var(--surf2); border:1px solid var(--border);
+  border-radius:var(--r); padding:.6rem .7rem;
+  display:flex; flex-direction:column; gap:2px;
+}
+.dc.wide { grid-column:span 2; }
+.dk { font-size:.6rem; color:var(--text3); font-weight:600; letter-spacing:1.5px; text-transform:uppercase; }
+.dv { font-family:var(--mono); font-size:1rem; color:var(--text); font-weight:700; }
+.dv.a  { color:var(--accent); }
+.dv.b  { color:var(--amber); }
+.dv.c  { color:var(--mint); }
+
+/* ── Graphs ── */
+.gw {
+  background:var(--surf2); border:1px solid var(--border);
+  border-radius:var(--r); overflow:hidden;
+}
+.gw canvas { display:block; width:100% !important; }
+
+/* ── Formula box ── */
+.fbox {
+  background:var(--surf2); border:1px solid var(--border);
+  border-radius:var(--r); padding:.7rem .9rem;
+  font-family:var(--mono); font-size:.75rem; color:var(--text2); line-height:1.9;
+}
+.fbox .hi { color:var(--mint); }
+.fbox .hl { color:var(--amber); }
+
+/* ════════════════════════
+   RESPONSIVE — MOBILE/TABLET
+════════════════════════ */
+@media (max-width: 900px) {
+  .sim-body {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 46vw auto;
+    height: auto;
+    overflow: visible;
+  }
+  .sim-mid {
+    grid-column: 1 / -1; /* full width, first row */
+    height: 46vw; min-height: 220px; max-height: 340px;
+  }
+  .panel-l, .panel-r {
+    overflow-y: visible;
+    border: none;
+    border-top: 1px solid var(--border);
+  }
+}
+
+@media (max-width: 600px) {
+  html { font-size: 15px; }
+  .sim-body {
+    grid-template-columns: 1fr;
+    grid-template-rows: 55vw auto auto;
+  }
+  .sim-mid { height: 55vw; max-height: 300px; }
+  .panel-l, .panel-r { grid-column: 1; }
+  .obj-grid { grid-template-columns: repeat(6,1fr); }
+  .dg { grid-template-columns: 1fr 1fr 1fr; }
+  .dc.wide { grid-column: span 3; }
+}
+
+@media (max-width: 380px) {
+  html { font-size: 14px; }
+  .hdr { flex-wrap: wrap; }
+  .logo { font-size: .72rem; }
+}
+
+/* scrollbar */
+::-webkit-scrollbar { width:4px; }
+::-webkit-scrollbar-thumb { background:rgba(91,164,245,.2); border-radius:4px; }
+
+/* focus ring */
+button:focus-visible, input:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+</style>
+</head>
+<body>
+
+<!-- ══════════ INTRO ══════════ -->
+<div id="pg-intro" class="page active">
+  <div class="card">
+    <span class="badge">Lab Fisika Virtual</span>
+    <span class="intro-icon">🌍</span>
+    <h1 class="intro-title">Gerak Jatuh<br>Bebas</h1>
+    <p class="intro-sub">Simulasi interaktif kinematika benda jatuh bebas — grafik kecepatan &amp; posisi real-time, vektor gaya, dan analisis energi.</p>
+
+    <label class="lbl" for="inp-nama">Nama Lengkap</label>
+    <input class="inp" id="inp-nama" type="text" placeholder="Masukkan nama Anda" autocomplete="name">
+
+    <label class="lbl" for="inp-nim">NIM / NIP</label>
+    <input class="inp" id="inp-nim" type="text" placeholder="Masukkan NIM / NIP">
+
+    <label class="lbl" for="inp-kelas">Kelas</label>
+    <input class="inp" id="inp-kelas" type="text" placeholder="Contoh: Fisika A 2024">
+
+    <button class="btn-primary" onclick="startSim()">Mulai Simulasi →</button>
+  </div>
+</div>
+
+<!-- ══════════ SIM PAGE ══════════ -->
+<div id="pg-sim" class="page">
+
+  <div class="hdr">
+    <div class="logo">⚛ FISIKALAB</div>
+    <div class="user-meta">
+      <strong id="hdr-nama">—</strong>
+      <span id="hdr-nim">—</span>
+    </div>
+    <button class="btn-back" onclick="goBack()">← Kembali</button>
+  </div>
+
+  <div class="sim-body">
+
+    <!-- LEFT PANEL -->
+    <div class="panel panel-l" id="panel-left">
+
+      <div class="playbar">
+        <button class="btn-play" id="btn-play" onclick="togglePlay()">▶ Mulai</button>
+        <button class="btn-reset" onclick="resetSim()">↺ Reset</button>
+        <span class="timer">t = <span id="lbl-t">0.00</span> s</span>
+      </div>
+
+      <div class="note" id="note-area">Tekan <b>▶ Mulai</b> untuk menjalankan simulasi.</div>
+
+      <div>
+        <div class="stitle">Parameter</div>
+        <div class="cc">
+          <div class="cr"><span class="cl">Gravitasi (g)</span><span class="cv" id="val-g">9.8 m/s²</span></div>
+          <input type="range" id="sl-g" min="1" max="25" step="0.1" value="9.8" oninput="onSlider()">
+          <div class="cr"><span class="cl">Ketinggian (h₀)</span><span class="cv" id="val-h">200 m</span></div>
+          <input type="range" id="sl-h" min="20" max="500" step="5" value="200" oninput="onSlider()">
+          <div class="cr"><span class="cl">Massa (m)</span><span class="cv" id="val-m">1.0 kg</span></div>
+          <input type="range" id="sl-m" min="0.1" max="10" step="0.1" value="1.0" oninput="onSlider()">
+          <div class="cr"><span class="cl">Kecepatan sim</span><span class="cv" id="val-sp">1×</span></div>
+          <input type="range" id="sl-sp" min="1" max="5" step="1" value="1" oninput="onSlider()">
+        </div>
+      </div>
+
+      <div>
+        <div class="stitle">Objek</div>
+        <div class="obj-grid">
+          <button class="obj-btn active" onclick="setObj(this,'🔵',0.05)"><span class="oe">🔵</span><span>Bola</span></button>
+          <button class="obj-btn" onclick="setObj(this,'🪨',0.08)"><span class="oe">🪨</span><span>Batu</span></button>
+          <button class="obj-btn" onclick="setObj(this,'🍎',0.06)"><span class="oe">🍎</span><span>Apel</span></button>
+          <button class="obj-btn" onclick="setObj(this,'💧',0.12)"><span class="oe">💧</span><span>Air</span></button>
+          <button class="obj-btn" onclick="setObj(this,'🪶',0.25)"><span class="oe">🪶</span><span>Bulu</span></button>
+          <button class="obj-btn" onclick="setObj(this,'💣',0.04)"><span class="oe">💣</span><span>Bom</span></button>
+        </div>
+      </div>
+
+      <div>
+        <div class="stitle">Tampilan</div>
+        <div class="cc">
+          <div class="tr"><span class="tl">Hambatan Udara</span>
+            <label class="tog"><input type="checkbox" id="tog-drag"><span class="tog-tk"></span></label></div>
+          <div class="tr"><span class="tl">Vektor Kecepatan</span>
+            <label class="tog"><input type="checkbox" id="tog-v" checked><span class="tog-tk"></span></label></div>
+          <div class="tr"><span class="tl">Vektor Percepatan</span>
+            <label class="tog"><input type="checkbox" id="tog-a" checked><span class="tog-tk"></span></label></div>
+          <div class="tr"><span class="tl">Jejak Lintasan</span>
+            <label class="tog"><input type="checkbox" id="tog-tr" checked><span class="tog-tk"></span></label></div>
+          <div class="tr"><span class="tl">Grid</span>
+            <label class="tog"><input type="checkbox" id="tog-grid" checked><span class="tog-tk"></span></label></div>
+        </div>
+      </div>
+
+    </div><!-- /panel-l -->
+
+    <!-- CENTER: CANVAS -->
+    <div class="sim-mid" id="sim-mid">
+      <canvas id="simCanvas"></canvas>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div class="panel panel-r" id="panel-right">
+
+      <div>
+        <div class="stitle">Data Real-Time</div>
+        <div class="dg">
+          <div class="dc"><span class="dk">Posisi y</span><span class="dv a" id="d-pos">—</span></div>
+          <div class="dc"><span class="dk">Waktu</span><span class="dv b" id="d-t">—</span></div>
+          <div class="dc"><span class="dk">Kecepatan</span><span class="dv c" id="d-vel">—</span></div>
+          <div class="dc"><span class="dk">Percepatan</span><span class="dv" id="d-acc">—</span></div>
+          <div class="dc"><span class="dk">E. Kinetik</span><span class="dv" id="d-ek">—</span></div>
+          <div class="dc"><span class="dk">E. Potensial</span><span class="dv" id="d-ep">—</span></div>
+          <div class="dc wide"><span class="dk">Energi Total</span><span class="dv b" id="d-etot">—</span></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="stitle">Grafik v-t</div>
+        <div class="gw"><canvas id="graphVT"></canvas></div>
+      </div>
+
+      <div>
+        <div class="stitle">Grafik y-t (jarak)</div>
+        <div class="gw"><canvas id="graphYT"></canvas></div>
+      </div>
+
+      <div>
+        <div class="stitle">Persamaan</div>
+        <div class="fbox">
+          g = <span class="hi" id="f-g">9.8</span> m/s²<br>
+          h₀ = <span class="hi" id="f-h">200</span> m<br><br>
+          <span class="hl">t</span> = √(2h₀/g) = <span class="hi" id="f-thit">—</span> s<br>
+          <span class="hl">v</span> = √(2gh₀) = <span class="hi" id="f-vhit">—</span> m/s<br><br>
+          y(t) = h₀ – ½g·t²<br>
+          v(t) = g·t
+        </div>
+      </div>
+
+    </div><!-- /panel-r -->
+
+  </div><!-- /sim-body -->
+</div><!-- /pg-sim -->
+
+<script>
+/* ══════════════════════════════════════
+   STATE
+══════════════════════════════════════ */
+let G=9.8, H0=200, MASS=1.0, SPEED=1;
+let simT=0, simY=H0, simV=0, simA=G;
+let playing=false, rafId=null, lastTs=null;
+let trail=[], vtData=[], ytData=[];
+let OBJ='🔵', DRAG=0.05;
+
+/* ══════════════════════════════════════
+   NAV
+══════════════════════════════════════ */
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function startSim(){
+  const nm = document.getElementById('inp-nama').value.trim() || 'Mahasiswa';
+  const ni = document.getElementById('inp-nim').value.trim()  || '—';
+  const kl = document.getElementById('inp-kelas').value.trim()|| '—';
+  document.getElementById('hdr-nama').textContent = nm;
+  document.getElementById('hdr-nim').textContent  = ni+' · '+kl;
+  showPage('pg-sim');
+  // wait one frame so display:flex takes effect → layout is computed → canvas has size
+  requestAnimationFrame(()=>requestAnimationFrame(initSim));
+}
+
+function goBack(){
+  pauseSim();
+  showPage('pg-intro');
+}
+
+/* ══════════════════════════════════════
+   CANVAS SETUP
+══════════════════════════════════════ */
+const canvas = document.getElementById('simCanvas');
+const ctx    = canvas.getContext('2d');
+
+function sizeCanvas(){
+  const mid = document.getElementById('sim-mid');
+  canvas.width  = mid.clientWidth  || 400;
+  canvas.height = mid.clientHeight || 300;
+}
+
+function sizeGraphCanvas(id, h){
+  const c = document.getElementById(id);
+  const parent = c.parentElement;
+  c.width  = parent.clientWidth  || 240;
+  c.height = h;
+}
+
+function sizeAll(){
+  sizeCanvas();
+  sizeGraphCanvas('graphVT', 110);
+  sizeGraphCanvas('graphYT', 110);
+}
+
+window.addEventListener('resize', ()=>{
+  if(document.getElementById('pg-sim').classList.contains('active')){
+    sizeAll(); draw();
+  }
+});
+
+/* ══════════════════════════════════════
+   INIT / RESET
+══════════════════════════════════════ */
+function initSim(){
+  sizeAll();
+  onSlider();       // reads sliders, calls resetSim
+}
+
+function resetSim(){
+  pauseSim();
+  simT=0; simY=H0; simV=0; simA=G;
+  trail=[]; vtData=[]; ytData=[];
+  document.getElementById('btn-play').textContent='▶ Mulai';
+  document.getElementById('note-area').textContent='Tekan ▶ Mulai untuk menjalankan simulasi.';
+  updateUI(); draw();
+}
+
+/* ══════════════════════════════════════
+   SLIDERS / OBJECTS
+══════════════════════════════════════ */
+function onSlider(){
+  G     = +document.getElementById('sl-g').value;
+  H0    = +document.getElementById('sl-h').value;
+  MASS  = +document.getElementById('sl-m').value;
+  SPEED = +document.getElementById('sl-sp').value;
+  document.getElementById('val-g').textContent  = G.toFixed(1)+' m/s²';
+  document.getElementById('val-h').textContent  = H0.toFixed(0)+' m';
+  document.getElementById('val-m').textContent  = MASS.toFixed(1)+' kg';
+  document.getElementById('val-sp').textContent = SPEED+'×';
+  document.getElementById('f-g').textContent    = G.toFixed(1);
+  document.getElementById('f-h').textContent    = H0.toFixed(0);
+  updateFormulas();
+  resetSim();
+}
+
+function setObj(btn, emoji, drag){
+  document.querySelectorAll('.obj-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  OBJ=emoji; DRAG=drag;
+  resetSim();
+}
+
+function updateFormulas(){
+  document.getElementById('f-thit').textContent = Math.sqrt(2*H0/G).toFixed(2);
+  document.getElementById('f-vhit').textContent = Math.sqrt(2*G*H0).toFixed(2);
+}
+
+/* ══════════════════════════════════════
+   PHYSICS
+══════════════════════════════════════ */
+function computeAcc(vel){
+  if(!document.getElementById('tog-drag').checked) return G;
+  const Fd = 0.5*1.2*DRAG*0.01*vel*vel;
+  return Math.max(0,(MASS*G - Fd)/MASS);
+}
+
+function stepEuler(dt){
+  if(document.getElementById('tog-tr').checked){
+    trail.push({y:simY});
+    if(trail.length>120) trail.shift();
+  }
+  simA = computeAcc(simV);
+  const nv = simV + simA*dt;
+  simY -= (simV+nv)/2*dt;
+  simV  = nv;
+  simT += dt;
+  vtData.push({t:simT, v:simV});
+  ytData.push({t:simT, d:H0-simY});
+  if(vtData.length>300){ vtData.shift(); ytData.shift(); }
+  if(simY<0) simY=0;
+}
+
+/* ══════════════════════════════════════
+   PLAYBACK
+══════════════════════════════════════ */
+function togglePlay(){
+  if(simY<=0){ resetSim(); return; }
+  playing=!playing;
+  document.getElementById('btn-play').textContent=playing?'⏸ Pause':'▶ Lanjut';
+  if(playing){ lastTs=null; rafId=requestAnimationFrame(loop); }
+  else cancelAnimationFrame(rafId);
+}
+function pauseSim(){ playing=false; cancelAnimationFrame(rafId); }
+
+function loop(ts){
+  if(!lastTs) lastTs=ts;
+  const dt = Math.min((ts-lastTs)/1000*SPEED, 0.05);
+  lastTs=ts;
+  stepEuler(dt);
+  draw(); updateUI();
+  if(simY>0 && playing){
+    rafId=requestAnimationFrame(loop);
+  } else if(simY<=0){
+    simY=0; playing=false;
+    document.getElementById('btn-play').textContent='▶ Ulang';
+    document.getElementById('note-area').innerHTML=
+      `<strong style="color:var(--mint);display:block;margin-bottom:.3rem">✅ Benda mencapai tanah!</strong>
+      <span style="display:block">⏱ Waktu: <b>${simT.toFixed(3)} s</b></span>
+      <span style="display:block">🚀 v akhir: <b>${Math.abs(simV).toFixed(2)} m/s</b></span>
+      <span style="display:block">⚡ Ek akhir: <b>${(0.5*MASS*simV*simV).toFixed(2)} J</b></span>`;
+    updateUI(); draw();
+  }
+}
+
+/* ══════════════════════════════════════
+   DRAW MAIN CANVAS
+══════════════════════════════════════ */
+function draw(){
+  const W=canvas.width, H=canvas.height;
+  if(W<2||H<2) return;
+  ctx.clearRect(0,0,W,H);
+
+  // Sky
+  const sky=ctx.createLinearGradient(0,0,0,H);
+  sky.addColorStop(0,'#101828'); sky.addColorStop(.75,'#152035'); sky.addColorStop(1,'#182d16');
+  ctx.fillStyle=sky; ctx.fillRect(0,0,W,H);
+
+  const mg=36, simH=H-mg*2;
+  const sY=simH/H0;
+
+  // Grid
+  if(document.getElementById('tog-grid').checked){
+    ctx.strokeStyle='rgba(91,164,245,.07)'; ctx.lineWidth=1;
+    const step=H0/8;
+    for(let yy=0;yy<=H0;yy+=step){
+      const py=mg+simH-yy*sY;
+      ctx.beginPath();ctx.moveTo(0,py);ctx.lineTo(W,py);ctx.stroke();
+      ctx.fillStyle='rgba(91,164,245,.38)';
+      ctx.font='9px Space Grotesk,sans-serif'; ctx.textAlign='left';
+      ctx.fillText(yy.toFixed(0)+' m', 4, py-2);
+    }
+  }
+
+  // Ground
+  const gy=mg+simH;
+  ctx.fillStyle='#1f3615'; ctx.fillRect(0,gy,W,H-gy+2);
+  ctx.strokeStyle='#3d7024'; ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(0,gy);ctx.lineTo(W,gy);ctx.stroke();
+  ctx.strokeStyle='#52a030'; ctx.lineWidth=1.5;
+  for(let x=10;x<W;x+=20){
+    [[x,gy,-4,-8],[x,gy,4,-8],[x,gy,0,-10]].forEach(([x1,y1,dx,dy])=>{
+      ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x1+dx,y1+dy);ctx.stroke();
+    });
+  }
+
+  // Height pole
+  const px=W*.15;
+  ctx.setLineDash([5,4]); ctx.strokeStyle='rgba(91,164,245,.2)'; ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(px,mg);ctx.lineTo(px,gy);ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='rgba(91,164,245,.45)'; ctx.font='10px Space Grotesk,sans-serif';
+  ctx.textAlign='left'; ctx.fillText('h₀='+H0+'m', px+5, mg+13);
+
+  // Trail
+  if(document.getElementById('tog-tr').checked && trail.length>1){
+    for(let i=1;i<trail.length;i++){
+      const py1=mg+simH-trail[i-1].y*sY;
+      const py2=mg+simH-trail[i].y*sY;
+      ctx.strokeStyle=`rgba(91,164,245,${(i/trail.length)*.5})`;
+      ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(W*.5,py1);ctx.lineTo(W*.5,py2);ctx.stroke();
+    }
+  }
+
+  // Object
+  const ox=W*.5, oy=mg+simH-simY*sY;
+  const r=Math.max(15,Math.min(22,W*.036));
+  // glow
+  const gl=ctx.createRadialGradient(ox,oy,0,ox,oy,r*3);
+  gl.addColorStop(0,'rgba(91,164,245,.16)'); gl.addColorStop(1,'transparent');
+  ctx.fillStyle=gl; ctx.beginPath();ctx.arc(ox,oy,r*3,0,Math.PI*2);ctx.fill();
+  // emoji
+  ctx.font=`${r*2}px 'Apple Color Emoji','Noto Color Emoji','Segoe UI Emoji',serif`;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(OBJ,ox,oy);
+  // y label
+  if(simY>1){
+    ctx.fillStyle='rgba(82,212,143,.9)'; ctx.font='bold 9px Space Mono,monospace';
+    ctx.textAlign='left'; ctx.textBaseline='middle';
+    ctx.fillText(`y=${simY.toFixed(1)}m`, ox+r+7, oy);
+  }
+  // velocity vector
+  if(document.getElementById('tog-v').checked && playing && simV>0.4){
+    drawArrow(ox+r+4,oy, ox+r+4,oy+Math.min(simV*2.5,85), '#5ba4f5',`v=${Math.abs(simV).toFixed(1)}`);
+  }
+  // acc vector
+  if(document.getElementById('tog-a').checked && playing){
+    drawArrow(ox-r-4,oy, ox-r-4,oy+Math.min(simA*2.5,65), '#f5a623',`a=${simA.toFixed(1)}`);
+  }
+
+  drawGraphs();
+}
+
+function drawArrow(x1,y1,x2,y2,color,lbl){
+  const dy=y2-y1; if(Math.abs(dy)<4) return;
+  const ang=Math.atan2(dy,x2-x1);
+  ctx.strokeStyle=color; ctx.fillStyle=color; ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-9*Math.cos(ang-.42),y2-9*Math.sin(ang-.42));
+  ctx.lineTo(x2-9*Math.cos(ang+.42),y2-9*Math.sin(ang+.42));
+  ctx.closePath();ctx.fill();
+  ctx.font='9px Space Grotesk,sans-serif';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(lbl,(x1+x2)/2-14,(y1+y2)/2);
+}
+
+/* ══════════════════════════════════════
+   GRAPHS  — key fix: always re-size before drawing
+══════════════════════════════════════ */
+function drawGraphs(){
+  drawGraph('graphVT', vtData, d=>d.t, d=>d.v, 'v (m/s)',    '#5ba4f5', 110);
+  drawGraph('graphYT', ytData, d=>d.t, d=>d.d, 'jarak (m)', '#52d48f', 110);
+}
+
+function drawGraph(id, data, xFn, yFn, yLbl, color, h){
+  const gc = document.getElementById(id);
+  // ★ Always sync canvas pixel size to CSS layout size
+  const pw = gc.parentElement.clientWidth || 240;
+  if(gc.width!==pw) gc.width=pw;
+  if(gc.height!==h) gc.height=h;
+  const W=gc.width, H=gc.height;
+  const gx=gc.getContext('2d');
+  gx.clearRect(0,0,W,H);
+  gx.fillStyle='rgba(0,0,0,.3)'; gx.fillRect(0,0,W,H);
+  if(data.length<2) return;
+
+  const p=24, gW=W-p*2, gH=H-p*2;
+  const xs=data.map(xFn), ys=data.map(yFn);
+  const xMn=Math.min(...xs), xMx=Math.max(...xs)||1;
+  const yMn=0, yMx=Math.max(...ys,1);
+  const px=x=>p+(x-xMn)/(xMx-xMn)*gW;
+  const py=y=>H-p-(y-yMn)/(yMx-yMn)*gH;
+
+  // grid
+  gx.strokeStyle='rgba(255,255,255,.05)'; gx.lineWidth=1;
+  for(let i=0;i<=4;i++){
+    const yv=yMn+(yMx-yMn)*i/4;
+    gx.beginPath();gx.moveTo(p,py(yv));gx.lineTo(W-p,py(yv));gx.stroke();
+    gx.fillStyle='rgba(255,255,255,.3)'; gx.font='7px Space Grotesk';
+    gx.textAlign='right'; gx.fillText(yv.toFixed(0),p-3,py(yv)+3);
+  }
+  // axes
+  gx.strokeStyle='rgba(255,255,255,.15)'; gx.lineWidth=1;
+  gx.beginPath();gx.moveTo(p,p);gx.lineTo(p,H-p);gx.lineTo(W-p,H-p);gx.stroke();
+  // labels
+  gx.fillStyle=color; gx.font='7px Space Grotesk'; gx.textAlign='left';
+  gx.fillText(yLbl,p+2,p+9);
+  gx.fillStyle='rgba(255,255,255,.25)'; gx.textAlign='center';
+  gx.fillText('t (s)',W/2,H-2);
+  // line
+  gx.strokeStyle=color; gx.lineWidth=2;
+  gx.shadowColor=color; gx.shadowBlur=4;
+  gx.beginPath();
+  data.forEach((d,i)=>{
+    const cx=px(xFn(d)), cy=py(yFn(d));
+    i===0?gx.moveTo(cx,cy):gx.lineTo(cx,cy);
+  });
+  gx.stroke(); gx.shadowBlur=0;
+}
+
+/* ══════════════════════════════════════
+   UI UPDATE
+══════════════════════════════════════ */
+function updateUI(){
+  const ek=.5*MASS*simV*simV, ep=MASS*G*simY;
+  document.getElementById('d-pos').textContent  = simY.toFixed(2)+' m';
+  document.getElementById('d-vel').textContent  = Math.abs(simV).toFixed(2)+' m/s';
+  document.getElementById('d-acc').textContent  = simA.toFixed(2)+' m/s²';
+  document.getElementById('d-t').textContent    = simT.toFixed(3)+' s';
+  document.getElementById('d-ek').textContent   = ek.toFixed(2)+' J';
+  document.getElementById('d-ep').textContent   = ep.toFixed(2)+' J';
+  document.getElementById('d-etot').textContent = (ek+ep).toFixed(2)+' J';
+  document.getElementById('lbl-t').textContent  = simT.toFixed(2);
+  updateFormulas();
+}
+</script>
+</body>
+</html>
